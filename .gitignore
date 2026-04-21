@@ -1,0 +1,31 @@
+node_modules
+dist
+.env
+*.env.local
+
+# Netlify
+.netlify
+
+# Storybook
+storybook-static
+build-storybook.log
+*storybook.log
+
+# PNPM
+.pnpm-debug.log*
+
+# Turborepo
+.turbo
+
+# Tanstack Start
+dev-dist
+dist-ssr
+.output
+.nitro
+.tanstack
+.vinxi
+.wrangler
+__unconfig*
+
+# Claude
+.claude/worktrees

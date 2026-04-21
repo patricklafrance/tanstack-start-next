@@ -1,0 +1,42 @@
+{
+    "name": "workspace-root",
+    "version": "0.0.0",
+    "private": true,
+    "description": "POC to figure our Tanstack Start limitations with our stack",
+    "license": "Apache-2.0",
+    "author": "Patrick Lafrance",
+    "type": "module",
+    "scripts": {
+        "lint": "turbo run lint --continue",
+        "build-web": "turbo run build --filter=@apps/web",
+        "typecheck": "tsgo",
+        "oxlint": "oxlint --deny-warnings --react-plugin --import-plugin --jsx-a11y-plugin --promise-plugin --vitest-plugin",
+        "oxfmt": "oxfmt",
+        "knip": "knip",
+        "syncpack": "syncpack lint",
+        "clean": "pnpm -r --parallel --include-workspace-root exec pnpm dlx rimraf dist storybook-static .turbo node_modules/.cache",
+        "reset": "pnpm run --sequential \"/^reset:.*/\"",
+        "reset:clean": "pnpm clean",
+        "reset:delete-node-modules": "pnpm -r --parallel --include-workspace-root exec pnpm dlx rimraf node_modules pnpm-lock.yaml",
+        "list-outdated-deps": "pnpm outdated -r --format list",
+        "update-outdated-deps": "pnpm run --sequential \"/^update-outdated-deps:.*/\"",
+        "update-outdated-deps:update-versions": "pnpm update -r --latest",
+        "update-outdated-deps:update-peers": "syncpack fix"
+    },
+    "devDependencies": {
+        "@packages/ts-configs": "workspace:*",
+        "@types/node": "25.6.0",
+        "@typescript/native-preview": "7.0.0-dev.20260420.1",
+        "knip": "6.5.0",
+        "oxfmt": "0.46.0",
+        "oxlint": "1.61.0",
+        "syncpack": "14.3.0",
+        "turbo": "2.9.6",
+        "typescript": "6.0.3"
+    },
+    "engines": {
+        "node": ">=24.0.0",
+        "pnpm": ">=10"
+    },
+    "packageManager": "pnpm@10.30.1"
+}

@@ -1,0 +1,9 @@
+{
+    "extends": "@packages/ts-configs/shared.json",
+    "compilerOptions": {
+        "incremental": true,
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+        "types": ["node"]
+    },
+    "exclude": ["apps", "modules", "packages", "node_modules"]
+}

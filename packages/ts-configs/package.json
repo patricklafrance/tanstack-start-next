@@ -1,0 +1,15 @@
+{
+    "name": "@packages/ts-configs",
+    "version": "0.0.0",
+    "description": "Sharedd typescript configurations.",
+    "files": [
+        "shared.json"
+    ],
+    "sideEffects": false,
+    "exports": {
+        "./shared.json": "./shared.json"
+    },
+    "peerDependencies": {
+        "typescript": "^6.0.3"
+    }
+}
