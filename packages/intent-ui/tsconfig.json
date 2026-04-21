@@ -2,7 +2,11 @@
     "extends": "@packages/ts-configs/shared.json",
     "compilerOptions": {
         "incremental": true,
-        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+        // Lets the package's own files self-reference via @/, matching the intentui skill's import vocabulary. TypeScript resolves these during type-checking without needing the workspace name.
+        "paths": {
+            "@/*": ["./src/*"]
+        }
     },
     "exclude": ["dist", "node_modules"]
 }

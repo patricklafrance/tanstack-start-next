@@ -1,0 +1,5 @@
+@import "@packages/intent-ui/globals.css";
+
+/* Tells Tailwind which files to scan for utility class names so the matching CSS is generated. Paths are relative to this file. Tailwind does not cross workspace boundaries automatically, so the app must explicitly declare every source tree whose Tailwind classes should end up in the compiled stylesheet. Without these lines, Tailwind classes written in app or module code would render as dead class names with no backing rules. */
+@source "./**/*.{ts,tsx}";
+@source "../../../modules/*/src/**/*.{ts,tsx}";

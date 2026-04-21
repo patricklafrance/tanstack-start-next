@@ -2,7 +2,7 @@
     "name": "workspace-root",
     "version": "0.0.0",
     "private": true,
-    "description": "POC to figure our Tanstack Start limitations with our stack",
+    "description": "POC to figure out Tanstack Start limitations with our tech stack",
     "type": "module",
     "scripts": {
         "dev-web": "turbo run dev --filter=@apps/web",

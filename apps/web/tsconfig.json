@@ -2,7 +2,13 @@
     "extends": "@packages/ts-configs/shared.json",
     "compilerOptions": {
         "incremental": true,
-        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+        "paths": {
+            // Maps @/ to the Intent UI package's src so consumer code (and scaffolded shadcn components) use the same @/ vocabulary the Intent UI skill documents. Required by the shadcn CLI
+            // to translate components.json aliases into filesystem paths; redundant for Vite and the TS checker which resolve via the package's "exports" + pnpm symlink.
+            "@/*": ["../../packages/intent-ui/src/*"]
+        },
+        "types": ["../../types/css.d.ts"]
     },
     "exclude": ["dist", "node_modules"]
 }
