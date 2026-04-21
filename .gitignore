@@ -18,14 +18,13 @@ build-storybook.log
 .turbo
 
 # Tanstack Start
-dev-dist
-dist-ssr
 .output
 .nitro
 .tanstack
 .vinxi
 .wrangler
 __unconfig*
+routeTree.gen.ts
 
 # Claude
 .claude/worktrees

@@ -1,0 +1,30 @@
+{
+    "name": "@apps/web",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Web application",
+    "license": "Apache-2.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite dev",
+        "build": "vite build",
+        "serve-build": "",
+        "typecheck": "tsgo"
+    },
+    "dependencies": {
+        "@tanstack/react-router": "1.168.23",
+        "@tanstack/react-start": "1.167.42",
+        "react": "19.2.5",
+        "react-dom": "19.2.5"
+    },
+    "devDependencies": {
+        "@packages/ts-configs": "workspace:*",
+        "@types/node": "25.6.0",
+        "@types/react": "19.2.14",
+        "@types/react-dom": "19.2.3",
+        "@typescript/native-preview": "7.0.0-dev.20260420.1",
+        "@vitejs/plugin-react": "6.0.1",
+        "typescript": "6.0.3",
+        "vite": "8.0.9"
+    }
+}

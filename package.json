@@ -7,10 +7,11 @@
     "author": "Patrick Lafrance",
     "type": "module",
     "scripts": {
-        "lint": "turbo run lint --continue",
+        "dev-web": "turbo run dev --filter=@apps/web",
         "build-web": "turbo run build --filter=@apps/web",
+        "lint": "turbo run lint --continue",
         "typecheck": "tsgo",
-        "oxlint": "oxlint --deny-warnings --react-plugin --import-plugin --jsx-a11y-plugin --promise-plugin --vitest-plugin",
+        "oxlint": "oxlint --deny-warnings",
         "oxfmt": "oxfmt",
         "knip": "knip",
         "syncpack": "syncpack lint",

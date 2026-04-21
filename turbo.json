@@ -10,12 +10,11 @@
             "cache": false,
             "persistent": true
         },
-        // "build": {
-        //     "dependsOn": ["^build"],
-        //     "inputs": ["$TURBO_DEFAULT$", "!**/README.md", "!**/CLAUDE.md"],
-        //     "env": ["MODULES"],
-        //     "outputs": ["dist/**"]
-        // },
+        "build": {
+            "dependsOn": ["^build"],
+            "inputs": ["$TURBO_DEFAULT$", "!**/README.md", "!**/CLAUDE.md"],
+            "outputs": ["dist/**"]
+        },
         // "build-storybook": {
         //     "cache": false
         // },
