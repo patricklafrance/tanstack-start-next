@@ -1,6 +1,7 @@
 {
     "name": "@packages/ts-configs",
     "version": "0.0.0",
+    "private": true,
     "description": "Sharedd typescript configurations.",
     "files": [
         "shared.json"

@@ -25,6 +25,7 @@ build-storybook.log
 .wrangler
 __unconfig*
 routeTree.gen.ts
+count.txt
 
 # Claude
 .claude/worktrees

@@ -3,8 +3,6 @@
     "version": "0.0.0",
     "private": true,
     "description": "POC to figure our Tanstack Start limitations with our stack",
-    "license": "Apache-2.0",
-    "author": "Patrick Lafrance",
     "type": "module",
     "scripts": {
         "dev-web": "turbo run dev --filter=@apps/web",
@@ -27,8 +25,8 @@
     "devDependencies": {
         "@packages/ts-configs": "workspace:*",
         "@types/node": "25.6.0",
-        "@typescript/native-preview": "7.0.0-dev.20260420.1",
-        "knip": "6.5.0",
+        "@typescript/native-preview": "7.0.0-dev.20260421.1",
+        "knip": "6.6.0",
         "oxfmt": "0.46.0",
         "oxlint": "1.61.0",
         "syncpack": "14.3.0",
