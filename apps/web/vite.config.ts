@@ -12,6 +12,11 @@ export default defineConfig({
     resolve: {
         tsconfigPaths: true
     },
+    // ssr: {
+    //     // Bundle all dependencies into the SSR output so the Netlify Lambda
+    //     // does not rely on pnpm-linked node_modules at runtime.
+    //     noExternal: true
+    // },
     plugins: [
         netlify(),
         tailwindcss(),

@@ -8,8 +8,8 @@
     "scripts": {
         "dev": "vite dev",
         "build": "vite build",
-        "serve-build": "",
-        "typecheck": "tsgo"
+        "typecheck": "tsgo",
+        "deploy": "netlify deploy --build --prod --site=374641a9-1f48-4c14-9341-413cb40cb59b"
     },
     "dependencies": {
         "@packages/intent-ui": "workspace:*",

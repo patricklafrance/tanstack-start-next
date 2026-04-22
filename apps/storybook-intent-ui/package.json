@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "storybook dev -p 6006",
-        "build": "storybook build",
+        "build-storybook": "storybook build",
+        "serve-storybook": "http-server storybook-static -p 8080 -P http://localhost:8080? -c-1",
         "typecheck": "tsgo"
     },
     "dependencies": {
@@ -28,7 +29,7 @@
         "@types/react-dom": "19.2.3",
         "@typescript/native-preview": "7.0.0-dev.20260421.2",
         "@vitejs/plugin-react": "6.0.1",
-        "globals": "17.5.0",
+        "http-server": "14.1.1",
         "storybook": "10.3.5",
         "typescript": "^6.0.3",
         "vite": "8.0.9"

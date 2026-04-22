@@ -15,19 +15,18 @@
             "inputs": ["$TURBO_DEFAULT$", "!**/README.md", "!**/CLAUDE.md"],
             "outputs": ["dist/**"]
         },
-        // "build-storybook": {
-        //     "cache": false
-        // },
-        "serve-build": {
-            "dependsOn": ["build"],
+        "build-storybook": {
+            "cache": false
+        },
+        "serve-storybook": {
+            "dependsOn": ["build-storybook"],
             "cache": false,
             "persistent": true
         },
-        // "serve-storybook": {
-        //     "dependsOn": ["build-storybook"],
-        //     "cache": false,
-        //     "persistent": true
-        // },
+        "deploy": {
+            "dependsOn": ["build"],
+            "cache": false
+        },
         "lint": {
             "dependsOn": ["//#oxlint", "//#oxfmt", "typecheck", "//#typecheck", "//#syncpack", "//#knip"]
         },

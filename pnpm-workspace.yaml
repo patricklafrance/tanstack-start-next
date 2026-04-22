@@ -1,7 +1,11 @@
 packages:
-    - apps/**
-    - modules/**
-    - packages/**
+  - apps/**
+  - modules/**
+  - packages/**
 
 onlyBuiltDependencies:
-    - esbuild
+  - '@parcel/watcher'
+  - esbuild
+  - netlify-cli
+  - sharp
+  - unix-dgram
