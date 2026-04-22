@@ -3,6 +3,8 @@
 import styles from "../styles.css?url";
 import type { ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { RootLayout } from "../RootLayout.tsx";
 
 export const Route = createRootRoute({
     head: () => ({
@@ -31,7 +33,9 @@ export const Route = createRootRoute({
 function RootComponent() {
     return (
         <RootDocument>
-            <Outlet />
+            <RootLayout>
+                <Outlet />
+            </RootLayout>
         </RootDocument>
     );
 }
@@ -45,6 +49,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             <body>
                 {children}
                 <Scripts />
+                <TanStackRouterDevtools />
             </body>
         </html>
     );
