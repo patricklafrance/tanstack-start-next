@@ -1,5 +1,6 @@
-import "../styles.css";
+/// <reference types="vite/client" />
 
+import styles from "../styles.css?url";
 import type { ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
@@ -15,6 +16,12 @@ export const Route = createRootRoute({
             },
             {
                 title: "TanStack Start Starter"
+            }
+        ],
+        links: [
+            {
+                rel: "stylesheet",
+                href: styles
             }
         ]
     }),

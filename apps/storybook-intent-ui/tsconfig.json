@@ -1,0 +1,10 @@
+{
+    "extends": "@packages/ts-configs/shared.json",
+    "compilerOptions": {
+        "incremental": true,
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+        "types": ["../../types/css.d.ts"]
+    },
+    "include": ["**/*", ".storybook/**/*", "vite.config.ts"],
+    "exclude": ["dist", "node_modules"]
+}

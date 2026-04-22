@@ -6,6 +6,7 @@
     "type": "module",
     "scripts": {
         "dev-web": "turbo run dev --filter=@apps/web",
+        "dev-storybook-intent-ui": "turbo run dev --filter=@apps/storybook-intent-ui",
         "build-web": "turbo run build --filter=@apps/web",
         "lint": "turbo run lint --continue",
         "typecheck": "tsgo",
@@ -25,7 +26,7 @@
     "devDependencies": {
         "@packages/ts-configs": "workspace:*",
         "@types/node": "25.6.0",
-        "@typescript/native-preview": "7.0.0-dev.20260421.1",
+        "@typescript/native-preview": "7.0.0-dev.20260421.2",
         "knip": "6.6.0",
         "oxfmt": "0.46.0",
         "oxlint": "1.61.0",
