@@ -21,7 +21,6 @@ Do the steps in order. Each is independent enough to merge on its own.
     ```
 
 2. In `_todosLayout.index.tsx`:
-
     - Import `createTodo` from `../Todos.server.ts`.
     - Import `useRouter` from `@tanstack/react-router`, `useForm` from `@tanstack/react-form`, and the existing UI primitives (`TextField`, `Input`, `Label`, `Button`).
     - Define a `useForm` instance inside `TodosList` with `defaultValues: { title: "" }` and an `onSubmit` that calls `createTodo`, then `form.reset()`, then `router.invalidate()`.
@@ -47,7 +46,6 @@ Do the steps in order. Each is independent enough to merge on its own.
     ```
 
 2. In `_todosLayout.$todoId.index.tsx`:
-
     - Import `deleteTodo` from `../Todos.server.ts`, `useRouter` from `@tanstack/react-router`, `Button` from `@/components/ui/button.tsx`.
     - Inside the component, grab `useRouter()`.
     - Add a Delete button in the existing flex row, after Edit.
@@ -64,7 +62,6 @@ Do the steps in order. Each is independent enough to merge on its own.
 **Check first:** does `@/components/ui/checkbox.tsx` exist in `packages/intent-ui/src/components/ui/`? If not, add it via `pnpx shadcn@latest add @intentui/checkbox` from `apps/web/` (per CLAUDE.md).
 
 1. In `_todosLayout.$todoId.edit.tsx`:
-
     - Import the Checkbox component.
     - Extend `useForm`'s `defaultValues`: add `completed: todo.completed`.
     - Extend the `onSubmit` payload: replace `completed: todo.completed` with `completed: value.completed`.
@@ -73,11 +70,7 @@ Do the steps in order. Each is independent enough to merge on its own.
         ```tsx
         <form.Field name="completed">
             {field => (
-                <Checkbox
-                    name={field.name}
-                    isSelected={field.state.value}
-                    onChange={field.handleChange}
-                >
+                <Checkbox name={field.name} isSelected={field.state.value} onChange={field.handleChange}>
                     Completed
                 </Checkbox>
             )}
@@ -95,12 +88,10 @@ Do the steps in order. Each is independent enough to merge on its own.
 **Goal:** loader latency and errors have UI, not blank screens.
 
 1. Build two small shared components in `modules/demo/src/todos/routes/` (or colocate inline if you prefer for a POC):
-
     - `<RoutePending />` — a centered spinner + "Loading…" text. Use Intent UI or a plain Tailwind `animate-spin` div.
     - `<RouteError error={error} />` — heading "Something went wrong", render `error.message`, and a Back link to `/todos`.
 
 2. Attach to the two loader-bearing routes:
-
     - `_todosLayout.index.tsx` route options:
 
         ```ts

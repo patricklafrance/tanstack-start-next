@@ -350,6 +350,46 @@ const createServerFn = () => {
 
 Click/interaction stories for Start-backed components are simply not built. Loader-driven render stories work; that's where the capability ends.
 
+### Prisma runtime crashes Storybook's browser bundle
+
+Any story that transitively imports a `*.server.ts` file which touches the database pulls `modules/demo/src/db/client.ts` into the browser graph, which imports `@prisma/client/runtime/client.mjs`. That runtime calls `fileURLToPath(import.meta.url)` at module init. The browser shim Vite provides for `node:url` has no `fileURLToPath`, so the story fails to load with:
+
+```
+TypeError: import_browser_external_node_url.fileURLToPath is not a function
+```
+
+The Storybook start addon already stubs `createServerFn`, so the server-function handlers never execute in stories — but the *module-load-time* imports (Prisma client + Neon adapter) still run. Extending the same stubbing principle one level deeper, a small Vite plugin replaces the real `db/client.ts` with a Proxy-based fake:
+
+```ts
+// apps/storybook-demo/vite.config.ts
+function stubDbClient(): Plugin {
+    const STUB_ID = "\0virtual:db-client-stub";
+    return {
+        name: "stub-db-client-in-storybook",
+        enforce: "pre",
+        resolveId(source) {
+            if (/(?:^|[\\/])db[\\/]client(\.ts)?$/.test(source)) return STUB_ID;
+            return null;
+        },
+        load(id) {
+            if (id !== STUB_ID) return null;
+            return `
+const throwOnCall = () => { throw new Error("Prisma is not available in Storybook."); };
+const prismaProxy = new Proxy(function () {}, {
+    get() { return prismaProxy; },
+    apply: throwOnCall
+});
+export const prisma = prismaProxy;
+`;
+        }
+    };
+}
+```
+
+Registered before the React plugin in the same array as `tanstackStartPlugin()`. The Proxy lets arbitrary property access (`prisma.todo.findMany`) resolve without crashing; calls throw, which is fine because the addon's `createServerFn` stubs mean no handler body ever runs at render time.
+
+Side effect: bundle shrunk from 440 kB (with Prisma + pg-lite wasm pulled in) to 63 kB for the TodoEdit story. Any new module that adds its own database client needs a matching entry in the regex — the pattern currently assumes the file is named `db/client.ts`.
+
 ### Module route files have to include the host app's `routeTree.gen.ts`
 
 Route files under `modules/<name>/src/<feature>/routes/` reference registry-driven APIs (`createFileRoute("/some/id")`, `useLoaderData({ from: "..." })`) whose types come from the `declare module` augmentation in `apps/web/src/routeTree.gen.ts`. If the module's `tsconfig.json` can't see that file, those APIs don't typecheck in isolation — `createFileRoute` rejects every path string because `FileRoutesByPath` is empty.
@@ -371,21 +411,28 @@ Soft coupling from `modules/demo` → `apps/web` at the type layer. That couplin
 
 ### `useLoaderData({ from })` returns `any` in module typecheck context
 
-Flushing out the tsconfig above exposed that inside `modules/demo`, `useLoaderData({ from: "..." })` resolves to `any` even though `FileRoutesByPath[<id>]` is populated correctly (path strings are validated; the loader-data type isn't). Not apparent before because `apps/web`'s typecheck doesn't actually load modules/demo route files — `routeTree.gen.ts` uses `@ts-nocheck` + dynamic `import('...')`, which lets `tsc` skip full resolution of the imported route modules (confirmed via `tsc --listFiles`). Plausible root cause: `pnpm` resolves `@tanstack/react-router` to two physical copies under `.pnpm/` because `apps/web` has it as a direct dep while `modules/demo` has it as a peer dep — the registry augmentation attaches to one copy, the `useLoaderData` generic resolves through the other.
+Inside `modules/demo`, `useLoaderData({ from: "..." })` resolves to `any`. Path-string validation still works (`FileRoutesByPath` key set is populated, bogus paths are rejected), but the loader-data **return type** collapses to `any`. Hidden until the tsconfig above started pulling route files into `modules/demo`'s typecheck — `apps/web`'s own typecheck never actually loads module route files (`routeTree.gen.ts` uses `@ts-nocheck` + dynamic `import('...')`, which lets `tsc` skip full resolution; confirmed via `tsc --listFiles`). So the bug was silently present project-wide the whole time.
 
-Same failure mode as ["Loader data types didn't reach lazy routes"](#loader-data-types-didnt-reach-lazy-routes) in the code-based annex below — file-based routing was supposed to fix it, and does in `apps/web`. Workaround is the same as the pre-migration one: derive the type locally from the server function and cast at the call site.
+Root cause is two-layered:
+
+1. The generator's `Register` augmentation targets the wrong module. `@tanstack/router-core/router.d.ts` defines `interface Register {}` and `RegisteredRouter<TRegister = Register>` reads from it. `routeTree.gen.ts` augments `Register` in `@tanstack/react-start`, which doesn't merge into router-core's `Register` through re-exports — the interface is re-exported, but module augmentations attach to the target module's namespace and don't propagate.
+2. Even if (1) is fixed by augmenting `@tanstack/router-core` directly, `@ts-nocheck` at the top of `routeTree.gen.ts` poisons the inferred types of every `const` in the file, including the Route consts referenced by `FileRoutesById`. So `FileRouteTypes["fileRoutesById"]["/todos/_todosLayout/"]` is `any` — which makes `RouteById<tree, id>["types"]["loaderData"]` (what `useLoaderData` returns) `any` regardless of how the router registration is set up.
+
+Verified both layers by augmenting router-core directly (reaches `RegisteredRouter`, but `RegisteredRouter["routeTree"]` is still `any`) and by probing `FileRouteTypes["fileRoutesById"][<id>]` (accepts `0 as any` — i.e. `any`). Investigation and attempted fix in `plans/fix-useloaderdata-any.md`.
+
+Same failure mode as ["Loader data types didn't reach lazy routes"](#loader-data-types-didnt-reach-lazy-routes) in the code-based annex. The file-based routing migration was supposed to fix it; turns out it didn't, the broken types just stopped being checked. No project-level fix exists without either an upstream generator change (no `@ts-nocheck`, or augment router-core) or a hand-maintained parallel registry. Per-call-site cast using the server function's return type is the only workable workaround:
 
 ```tsx
-// modules/demo/src/todos/routes/_todosLayout.index.lazy.tsx
+// modules/demo/src/todos/TodosList.tsx
 import { useLoaderData } from "@tanstack/react-router";
-import type { getTodos } from "../Todos.server.ts";
+import type { getTodos } from "./Todos.server.ts";
 
 type Todos = Awaited<ReturnType<typeof getTodos>>;
 
 const todos = useLoaderData({ from: "/todos/_todosLayout/" }) as Todos;
 ```
 
-Only surfaces on callback-demanding use sites (`.map(t => ...)`) because property access on `any` silently compiles. Sibling files that only do `todo.title` look fine but carry the same untyped loader data.
+Only surfaces on callback-demanding use sites (`.map(t => ...)`) because property access on `any` silently compiles. Sibling consumers that only do `todo.title` look fine but carry the same untyped loader data.
 
 ### Intent UI docs outdated for TanStack Router (intentui/intentui#629)
 

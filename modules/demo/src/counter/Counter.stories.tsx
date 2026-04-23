@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 export const Zero: Story = {
     parameters: {
         tanstackRouter: tanstackRouterParameters({
-            location: { path: "/counter" },
+            location: { path: "/counter/" },
             loader: { data: 0 }
         })
     }
@@ -25,7 +25,7 @@ export const Zero: Story = {
 export const MidCount: Story = {
     parameters: {
         tanstackRouter: tanstackRouterParameters({
-            location: { path: "/counter" },
+            location: { path: "/counter/" },
             loader: { data: 41 }
         })
     }
