@@ -120,3 +120,9 @@ Issues with `storybook-addon-tanstack-start`:
 `storybook-addon-tanstack-start` doesn't support stubbing any server function:
 
 - `createServerFn` stubs throw unconditionally and there is no documented per-story override. Stories can render with mocked loader data, but click/interaction flows that invoke server functions are a dead end without refactoring the component to expose a mockable boundary.
+
+### Intent UI
+
+Issues:
+
+- Docs is outdated for Tanstack Router link support: https://github.com/intentui/intentui/issues/629
