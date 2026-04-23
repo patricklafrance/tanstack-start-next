@@ -1,7 +1,7 @@
-import { createLazyRoute, createLink } from "@tanstack/react-router";
+import { createLazyRoute, createLink, useLoaderData } from "@tanstack/react-router";
 import { Heading } from "@/components/ui/heading.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
-import type { TodosLoaderData } from "./TodosList.tsx";
+import type { getTodos } from "../Todos.server.ts";
 
 export const Route = createLazyRoute("/todos/_todosLayout/")({
     component: TodosList
@@ -9,8 +9,10 @@ export const Route = createLazyRoute("/todos/_todosLayout/")({
 
 const Link = createLink(IntentLink);
 
+type Todos = Awaited<ReturnType<typeof getTodos>>;
+
 export function TodosList() {
-    const todos = Route.useLoaderData() as TodosLoaderData;
+    const todos = useLoaderData({ from: "/todos/_todosLayout/" }) as Todos;
 
     return (
         <div>

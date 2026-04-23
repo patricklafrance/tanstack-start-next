@@ -1,7 +1,7 @@
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
-    ignorePatterns: [".claude/**"],
+    ignorePatterns: [".claude/**", "apps/web/src/routeTree.gen.ts"],
     // Setting `plugins` overwrites oxlint's default plugin set (eslint, typescript, unicorn, oxc),
     // so the defaults must be listed explicitly alongside the extras we want enabled.
     plugins: ["eslint", "typescript", "unicorn", "oxc", "react", "import", "jsx-a11y", "promise", "vitest"],

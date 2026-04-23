@@ -29,5 +29,8 @@ count.txt
 # Prisma
 generated
 
+# TanStack Router — generated route tree
+apps/web/src/routeTree.gen.ts
+
 # Claude
 .claude/worktrees

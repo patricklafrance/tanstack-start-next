@@ -5,9 +5,6 @@
     "description": "Demo module",
     "type": "module",
     "sideEffects": false,
-    "exports": {
-        ".": "./src/createDemoRoutes.tsx"
-    },
     "scripts": {
         "postinstall": "prisma generate",
         "prisma-migrate": "dotenv -e ../../.env.local -- prisma migrate dev",

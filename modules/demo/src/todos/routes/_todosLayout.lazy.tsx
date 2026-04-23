@@ -1,13 +1,10 @@
-import type { AnyRouteMatch } from "@tanstack/react-router";
-import { Outlet, useMatches, useRouter } from "@tanstack/react-router";
+import { createLazyRoute, Outlet, useMatches, useRouter } from "@tanstack/react-router";
 import type { Key } from "react";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs.tsx";
 
-declare module "@tanstack/react-router" {
-    interface StaticDataRouteOption {
-        crumb?: string | ((match: AnyRouteMatch) => string);
-    }
-}
+export const Route = createLazyRoute("/todos/_todosLayout")({
+    component: TodosLayout
+});
 
 export function TodosLayout() {
     const matches = useMatches();

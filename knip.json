@@ -4,8 +4,14 @@
             "entry": ["types/**/*.d.ts"]
         },
         "apps/web": {
-            "entry": ["src/router.tsx"],
-            "ignoreDependencies": ["@heroicons/react"]
+            // routeTree.gen.ts is TanStack Router's generated entry that imports every file-based route
+            // (including cross-workspace module routes mounted via virtualRouteConfig/physical()). Including it
+            // here lets knip trace through to the true leaf components and their deps.
+            "entry": ["src/router.tsx", "src/routeTree.gen.ts"],
+            // @modules/demo and @tanstack/react-form are consumed transitively through module route files
+            // that the TanStack Router generator wires into routeTree.gen.ts via filesystem paths. knip sees
+            // the filesystem paths, not the package specifiers, so it can't tie the imports back to these deps.
+            "ignoreDependencies": ["@heroicons/react", "@modules/demo", "@tanstack/react-form"]
         },
         "apps/storybook": {
             "ignoreDependencies": ["@heroicons/react", "storybook-addon-tanstack-router", "use-sync-external-store"]

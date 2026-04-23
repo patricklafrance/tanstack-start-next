@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 // transitively imports the Vite plugin — whose module top-level calls fileURLToPath(import.meta.url) — and would
 // crash the browser bundle. The "start" addon re-exports this function from the "router" addon anyway.
 import { tanstackRouterParameters } from "storybook-addon-tanstack-router";
-import { Counter } from "./Counter.lazy.tsx";
+import { Counter } from "./routes/index.lazy.tsx";
 
 const meta = {
     title: "Demo/Counter",

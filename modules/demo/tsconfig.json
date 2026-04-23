@@ -7,5 +7,10 @@
             "@/*": ["../../packages/intent-ui/src/*"]
         }
     },
-    "exclude": ["dist", "node_modules"]
+    // Route files need the FileRoutesByPath augmentation from apps/web's routeTree.gen.ts to typecheck
+    // (createFileRoute's path argument, useLoaderData({ from }), etc.). Including the generated file here
+    // pulls that augmentation into this project so routes resolve in-editor AND during `pnpm lint`.
+    // Stories import from route files by convention; Storybook typechecks them via its own build.
+    "include": ["src/**/*", "../../apps/web/src/routeTree.gen.ts"],
+    "exclude": ["dist", "node_modules", "**/*.stories.tsx"]
 }

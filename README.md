@@ -33,8 +33,16 @@ The file lands at `packages/intent-ui/src/components/ui/<name>.tsx`. Import via 
 
 1. Create `modules/<name>/` with a `package.json` named `@modules/<name>` (private, workspace version, `type: "module"`).
 2. Declare `@packages/intent-ui` as a workspace dependency if the module uses design-system components.
-3. If the module exposes routes, export a single `create<Name>Routes(parentRoute)` factory from its entry point and call it from `apps/web/src/router.tsx` — spread its return into `rootRoute.addChildren([...])`. See `modules/demo` for the reference shape.
-4. Import into `apps/web` where it's needed.
+3. If the module exposes routes, put them under `modules/<name>/src/<feature>/routes/` using file-based conventions (`index.tsx`, `_layout.tsx`, `$param.tsx`, etc.). Mount the directory from `apps/web/vite.config.ts`:
+
+    ```ts
+    // apps/web/vite.config.ts
+    virtualRouteConfig: rootRoute("__root.tsx", [index("index.tsx"), physical("/<urlPrefix>", "../../../../modules/<name>/src/<feature>/routes")]);
+    ```
+
+    Paths in `physical()` are resolved relative to `apps/web/src/routes/`. See `modules/demo` for the reference shape.
+
+4. Declare the module as a workspace dep of `apps/web` (`"@modules/<name>": "workspace:*"`) so pnpm materializes its own dependency tree even though the app doesn't import the package by name.
 
 Modules do not configure Tailwind and do not import CSS — the host app handles both. The app's `apps/web/src/styles.css` already has an `@source` glob covering `modules/*/src/**`; new modules are picked up automatically.
 
@@ -85,70 +93,28 @@ Assumes a single shared Neon database — no per-contributor branching conventio
 
 Run `pnpm prisma-migrate-deploy` from `modules/demo/` against the production Neon branch. Deliberately manual, not wired into the Netlify build: the build runs in `apps/web` and has no knowledge of `modules/demo`'s Prisma scripts, and auto-applying DDL during a routine site deploy is the wrong default.
 
+## Routing
+
+Routes are file-based via TanStack Router's generator, with module route directories mounted through [virtual file routes](https://tanstack.com/router/latest/docs/framework/react/routing/virtual-file-routes). The generator watches `apps/web/src/routes/` as its nominal `routesDirectory`, and `virtualRouteConfig` in `apps/web/vite.config.ts` uses `physical()` to mount `modules/<name>/src/<feature>/routes/` directories at their URL prefixes. Every file under those directories gets generated into `apps/web/src/routeTree.gen.ts` — the single source of truth for the router.
+
+Conventions used (flat-file style):
+
+- `index.tsx` — index route at the parent path.
+- `$param.tsx` — dynamic segment.
+- `_layout.tsx` — pathless layout (renders `<Outlet />` to children).
+- `foo.bar.tsx` — dots flatten the tree: lives at `/foo/bar` under the parent.
+
+`autoCodeSplitting` is on by default in the start plugin (it can't be disabled via `router` options — the start-plugin-core schema `omit`s the flag). Every route's `component` / `errorComponent` / `pendingComponent` / `notFoundComponent` is lazy-loaded into its own chunk; loaders, `beforeLoad`, `staticData`, and validators stay in the critical bundle so they can run in parallel with the lazy chunk fetch.
+
 ## Limitations
 
-### Code-based routing
+### Pathless layout ids propagate to descendants
 
-TanStack Start's default file-based route generator scans a single directory (`apps/web/src/routes/`) and does not cross workspace boundaries on its own. A module defined under `modules/<name>/` cannot contribute file-based routes through the default generator. The sanctioned escape hatch is [virtual file routes](https://tanstack.com/router/latest/docs/framework/react/routing/virtual-file-routes) — `virtualRouteConfig` in `tsr.config.json` with the `physical()` helper can mount route directories from anywhere, including sibling workspaces. That path was not taken here (it carries its own rough edges under pnpm — see [TanStack/router#4984](https://github.com/TanStack/router/issues/4984)); instead the repo disables `enableRouteGeneration` and assembles the entire route tree in code. Every feature (app-local or module) exposes a `create<Feature>Routes(parentRoute)` factory that `apps/web/src/router.tsx` composes:
+Pathless layout routes (file named `_foo.tsx`) contribute nothing to the URL, but the `_foo` segment is prepended to every descendant's route id. A child's file `_todosLayout.$todoId.edit.tsx` gets route id `/todos/_todosLayout/$todoId/edit` even though the URL is `/todos/$todoId/edit`. This matters anywhere you reference a route by id — e.g. `useLoaderData({ from: "/todos/_todosLayout/$todoId" })` — where the `_todosLayout` segment is load-bearing. Confirmed as working-as-designed upstream ([TanStack/router#2130](https://github.com/TanStack/router/issues/2130)). Not a bug; just a gotcha that refactors (renaming or removing a `_layout`) have to follow through every descendant file and every `from` string.
 
-```ts
-// apps/web/src/router.tsx
-rootRoute.addChildren([createHomeRoute(rootRoute), ...createDemoRoutes(rootRoute)]);
-```
+### Virtual routes + pnpm is under active maintenance
 
-Given that choice, every item below is a downstream consequence.
-
-#### File-based + code-based cannot be mixed safely
-
-Ruling out "just use file-based for the app and code-based for modules": [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) reports that the type registry (generated from the file tree) doesn't pick up code-based routes added via `addChildren`. `<Link to="...">` autocomplete and typed `useParams` silently drop those routes from the union. No warning, no type error — it compiles. The issue was closed by the reporter without a fix PR; the architecture (generated `routeTree.gen.ts` from files only) inherently excludes `addChildren` routes, and virtual routes are the sanctioned way to bring them into the registry. Fully code-based or fully file-based (incl. virtual); no ad-hoc mixing.
-
-#### Every route is manual
-
-`getParentRoute`, `addChildren`, lazy wiring via `.lazy(() => import(...).then(d => d.Route))`, and `declare module "@tanstack/react-start"` / `Register` augmentation are all hand-written. File-based scaffolding is gone.
-
-#### No automatic code-splitting
-
-File-based routing splits by default. Code-based doesn't. Every split is explicit — `.lazy(...)` per route, or nothing.
-
-#### TS compiler slows as the route tree grows
-
-Code-based routing relies on inference through `getParentRoute()` chains — confirmed by the maintainers as existing primarily for TypeScript typing inference ([discussion #585](https://github.com/TanStack/router/discussions/585)). File-based codegen short-circuits that work by emitting a concrete `routeTree.gen.ts`. TanStack Router has documented TS-perf gotchas on the consumer side (e.g. [#1091](https://github.com/TanStack/router/issues/1091)), and directionally, deeper `getParentRoute` chains mean more inference per file; we haven't benchmarked it here.
-
-#### Route id quirks that must be tracked manually
-
-Two cases where the route id diverges from what a reader would expect, and the lazy side has to match it character-for-character:
-
-- **Index routes** (`path: "/"` under a parent) have ids with a trailing slash (`/todos/`). `createLazyRoute("/todos/")` needs the slash; `createLazyRoute("/todos")` silently doesn't match.
-- **Pathless layout routes** (declared with `id: "_foo"` instead of `path`) contribute nothing to the URL but their id is prepended to every descendant's route id — see the pathless-layout workaround below.
-
-Both fail at runtime with "Failed to fetch dynamically imported module" — not at build time.
-
-#### Loader data types don't reach lazy routes
-
-`useLoaderData()` in a `*.lazy.tsx` file returns `unknown`. The route's loader return type doesn't propagate from the registered `routeTree` through to lazy consumers. Same root cause as [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) above (the type registry was designed around file-based codegen), surfaced on the data side instead of the link side: trees assembled via `addChildren` aren't fully visible to the lookups TSR performs for `useLoaderData`. Tracked in [TanStack/router discussions#1732](https://github.com/TanStack/router/discussions/1732).
-
-Alternatives that don't fix it:
-
-- `getRouteApi(id).useLoaderData()` — same registry gap, same `unknown`.
-- `RouteById<RegisteredRouter["routeTree"], id>["types"]["loaderData"]` — reaches into internal types not covered by semver, and still resolves through the same broken registry.
-- Casting consumers to a raw Prisma model type (`as TodoModel`) — couples every consumer to the schema, so any `select`/`include` narrowing silently becomes a lie.
-
-See the workaround below.
-
-#### Production build fails: manifest plugin requires a generated route tree
-
-`pnpm build-web` fails in the SSR phase with:
-
-```
-[plugin tanstack-start:start-manifest-plugin]
-TypeError: Cannot convert undefined or null to object
-    at Object.entries (<anonymous>)
-    at buildRouteManifestRoutes (.../start-manifest-plugin/manifestBuilder.js:171)
-```
-
-The plugin does `Object.entries(options.routeTreeRoutes)`. With `enableRouteGeneration: false`, no `routeTree.gen.ts` is produced, `routeTreeRoutes` is `undefined`, and the plugin crashes. Client bundle completes; only the SSR environment blows up. Same `vite build` runs locally, via `netlify deploy --build`, and in Netlify CD — so `pnpm build-web`, `pnpm deploy-web`, and Git-based deploys all fail at the same point. Upstream: [TanStack/router#5808](https://github.com/TanStack/router/issues/5808), closed as not planned.
-
-No workaround for a POC. Shipping requires switching to file-based routing (gives up cross-workspace routes) or virtual file routes (the sanctioned alternative, mentioned above). Until one of those, builds don't produce artifacts.
+The sanctioned path for cross-workspace file-based routing (`virtualRouteConfig` + `physical()`) works, but has open upstream bugs around pnpm-hoisted package alias resolution ([TanStack/router#4984](https://github.com/TanStack/router/issues/4984)). This repo sidesteps that by using filesystem paths (`../../../../modules/...`) in `physical()` rather than workspace package specifiers. If you switch to package specifiers and hit resolution failures, #4984 is the tracking issue.
 
 ## Issues encountered
 
@@ -172,11 +138,7 @@ The error is: Apr 21, 10:51:25 PM: c3d83970 ERROR  Invoke Error     {"errorType"
 
 Bottom line... to deploy with the Netlify CLI, it would requires to somehow pre-build the server functions with something like tsdown or set `ssr.noExternal: true` in vite config, which have it's own downsides as well. Git-based CD has the same issue — it runs the same `vite build` command.
 
-Note: this `ERR_MODULE_NOT_FOUND` is a **runtime** failure, downstream of a successful build producing a `server.mjs`. Currently the build itself fails earlier (see the manifest-plugin limitation under Code-based routing), so this runtime error isn't reached today.
-
-### Tanstack Router
-
-- Pathless layout route ids silently become part of every descendant's route id. A child's `createLazyRoute(...)` must include the pathless segment — e.g. `createLazyRoute("/todos/_todosLayout/$todoId")`, not `createLazyRoute("/todos/$todoId")`. Mismatched ids fail at runtime with "Failed to fetch dynamically imported module". The URL path is unchanged; only the route id shifts.
+Note: this `ERR_MODULE_NOT_FOUND` is a **runtime** failure, downstream of a successful build producing a `server.mjs`. The build itself succeeds (file-based routing produces the `routeTree.gen.ts` the manifest plugin needs); the error only surfaces when the CLI-built artifact is invoked.
 
 ### Vite
 
@@ -256,7 +218,7 @@ The Netlify Vite plugin reads the linked site's `base = apps/web` and joins it a
 export default defineConfig(() => ({
     plugins: [
         tailwindcss(),
-        tanstackStart({ router: { enableRouteGeneration: false } }),
+        tanstackStart({ router: { virtualRouteConfig } }),
         viteReact(),
         netlify() // gated elsewhere in the config to command === "build"
     ]
@@ -264,51 +226,6 @@ export default defineConfig(() => ({
 ```
 
 A plugin that aborts by default in dev, gated by a string comparison, is not a normal shape for Vite configuration.
-
-### TanStack Router pathless layout route ids
-
-Pathless layout routes (declared with `id: "_foo"` instead of `path`) contribute nothing to the URL, but their id **silently becomes part of every descendant's route id**. The lazy side must hard-code that segment or fail at runtime. Applied to every lazy route under `modules/demo/src/todos/`:
-
-```ts
-// modules/demo/src/todos/createTodosRoutes.tsx
-const todosLayoutRoute = createRoute({
-    getParentRoute: () => todosRoute,
-    id: "_todosLayout",
-    component: TodosLayout
-});
-```
-
-```ts
-// modules/demo/src/todos/TodoEdit.lazy.tsx
-// URL is /todos/:todoId/edit. Route id is /todos/_todosLayout/$todoId/edit.
-export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
-    component: TodoEdit
-});
-```
-
-The URL and the id diverge. If someone refactors the layout id or removes the pathless wrapper, every descendant's lazy id must be updated by hand or navigation breaks with "Failed to fetch dynamically imported module".
-
-### Loader data types via a per-route type alias
-
-`useLoaderData()` in a lazy route returns `unknown` in this repo (see the Limitations entry). Since the registry-based fixes don't help and casting to a Prisma type couples consumers to the schema rather than the query, we derive the type from the server function itself and export it from the critical file:
-
-```tsx
-// modules/demo/src/todos/TodosList.tsx (critical)
-export const getTodos = createServerFn({ method: "GET" }).handler(() => {
-    return prisma.todo.findMany({ orderBy: { createdAt: "asc" } });
-});
-
-export type TodosLoaderData = Awaited<ReturnType<typeof getTodos>>;
-```
-
-```tsx
-// modules/demo/src/todos/TodosList.lazy.tsx (lazy)
-import type { TodosLoaderData } from "./TodosList.tsx";
-
-const todos = routeApi.useLoaderData() as TodosLoaderData;
-```
-
-Narrowing the query (adding `select`, `include`) narrows `TodosLoaderData` automatically, so every consumer's cast stays honest without manual edits. Every new route with a loader carries its own `<Name>LoaderData` export. When TSR's registry learns to resolve loader types through `addChildren`-built trees, the cast goes away everywhere.
 
 ### Vite 504 Outdated Optimize Dep (vitejs/vite#22303)
 
@@ -407,6 +324,43 @@ const createServerFn = () => {
 
 Click/interaction stories for Start-backed components are simply not built. Loader-driven render stories work; that's where the capability ends.
 
+### Module route files have to include the host app's `routeTree.gen.ts`
+
+Route files under `modules/<name>/src/<feature>/routes/` reference registry-driven APIs (`createFileRoute("/some/id")`, `useLoaderData({ from: "..." })`) whose types come from the `declare module` augmentation in `apps/web/src/routeTree.gen.ts`. If the module's `tsconfig.json` can't see that file, those APIs don't typecheck in isolation — `createFileRoute` rejects every path string because `FileRoutesByPath` is empty.
+
+Earlier setup excluded `src/**/routes/**` from the module's `tsconfig.json` to dodge this, which had a worse side effect: VSCode's TS server opened route files in an **inferred project** with no `paths` mapping, so every `@/components/ui/<name>` import showed "Cannot find module" red-squiggles even though `pnpm lint` was green. The fix is to include the generated file explicitly so the augmentation flows in:
+
+```jsonc
+// modules/demo/tsconfig.json
+{
+    "compilerOptions": {
+        "paths": { "@/*": ["../../packages/intent-ui/src/*"] }
+    },
+    "include": ["src/**/*", "../../apps/web/src/routeTree.gen.ts"],
+    "exclude": ["dist", "node_modules", "**/*.stories.tsx"]
+}
+```
+
+Soft coupling from `modules/demo` → `apps/web` at the type layer. That coupling already exists at runtime (`apps/web` is the only consumer), so making it explicit in the tsconfig is the lesser evil compared to the editor blind spot.
+
+### `useLoaderData({ from })` returns `any` in module typecheck context
+
+Flushing out the tsconfig above exposed that inside `modules/demo`, `useLoaderData({ from: "..." })` resolves to `any` even though `FileRoutesByPath[<id>]` is populated correctly (path strings are validated; the loader-data type isn't). Not apparent before because `apps/web`'s typecheck doesn't actually load modules/demo route files — `routeTree.gen.ts` uses `@ts-nocheck` + dynamic `import('...')`, which lets `tsc` skip full resolution of the imported route modules (confirmed via `tsc --listFiles`). Plausible root cause: `pnpm` resolves `@tanstack/react-router` to two physical copies under `.pnpm/` because `apps/web` has it as a direct dep while `modules/demo` has it as a peer dep — the registry augmentation attaches to one copy, the `useLoaderData` generic resolves through the other.
+
+Same failure mode as ["Loader data types didn't reach lazy routes"](#loader-data-types-didnt-reach-lazy-routes) in the code-based annex below — file-based routing was supposed to fix it, and does in `apps/web`. Workaround is the same as the pre-migration one: derive the type locally from the server function and cast at the call site.
+
+```tsx
+// modules/demo/src/todos/routes/_todosLayout.index.lazy.tsx
+import { useLoaderData } from "@tanstack/react-router";
+import type { getTodos } from "../Todos.server.ts";
+
+type Todos = Awaited<ReturnType<typeof getTodos>>;
+
+const todos = useLoaderData({ from: "/todos/_todosLayout/" }) as Todos;
+```
+
+Only surfaces on callback-demanding use sites (`.map(t => ...)`) because property access on `any` silently compiles. Sibling files that only do `todo.title` look fine but carry the same untyped loader data.
+
 ### Intent UI docs outdated for TanStack Router (intentui/intentui#629)
 
 The docs describe a TSR integration API that no longer matches reality. We stopped consulting them and read `react-aria-components` source directly to confirm the generated `Link` already works, then wire TSR on top at the call site:
@@ -418,10 +372,103 @@ export function Link({ ... }: LinkProps) { return <LinkPrimitive ... />; }
 ```
 
 ```tsx
-// modules/demo/src/todos/TodoEdit.lazy.tsx — wrap at use-site
+// modules/demo/src/todos/routes/_todosLayout.$todoId.edit.tsx — wrap at use-site
 import { createLink } from "@tanstack/react-router";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
 const Link = createLink(IntentLink);
 ```
 
 The docs being wrong means every TSR + Intent UI integration discovery is done by reading source. That cost is ongoing — it applies to every new component, not just `Link`.
+
+## Annex: why we moved off code-based routing
+
+The repo was built code-based first because file-based's default generator scans a single directory (`apps/web/src/routes/`) and doesn't cross workspace boundaries — so a module under `modules/<name>/` couldn't contribute routes through the default setup. Virtual file routes (`virtualRouteConfig` + `physical()`) eventually turned out to be the sanctioned escape hatch, and the current setup uses them. Keeping the earlier record here so future-me remembers what specifically went wrong with the code-based path — every bullet below is something we actually hit in this repo.
+
+### File-based + code-based cannot be mixed safely
+
+Early attempt: "just use file-based for the app and code-based for modules." [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) reports that the type registry (generated from the file tree) doesn't pick up code-based routes added via `addChildren`. `<Link to="...">` autocomplete and typed `useParams` silently drop those routes from the union. No warning, no type error — it compiles. The issue was closed by the reporter without a fix PR; the architecture (generated `routeTree.gen.ts` from files only) inherently excludes `addChildren` routes, and virtual routes are the sanctioned way to bring them into the registry. Fully code-based or fully file-based (incl. virtual); no ad-hoc mixing.
+
+### Every route was manual
+
+`getParentRoute`, `addChildren`, lazy wiring via `.lazy(() => import(...).then(d => d.Route))`, and `declare module "@tanstack/react-start"` / `Register` augmentation all had to be hand-written. File-based scaffolding was unavailable.
+
+### No automatic code-splitting
+
+File-based routing splits by default. Code-based doesn't. Every split was explicit — `.lazy(...)` per route, or nothing.
+
+### TS compiler slowed as the route tree grew
+
+Code-based routing relies on inference through `getParentRoute()` chains — confirmed by the maintainers as existing primarily for TypeScript typing inference ([discussion #585](https://github.com/TanStack/router/discussions/585)). File-based codegen short-circuits that work by emitting a concrete `routeTree.gen.ts`. TanStack Router has documented TS-perf gotchas on the consumer side (e.g. [#1091](https://github.com/TanStack/router/issues/1091)), and directionally, deeper `getParentRoute` chains mean more inference per file.
+
+### Route id quirks had to be tracked manually
+
+Two cases where the route id diverged from what a reader would expect, and the lazy side had to match it character-for-character:
+
+- **Index routes** (`path: "/"` under a parent) had ids with a trailing slash (`/todos/`). `createLazyRoute("/todos/")` needed the slash; `createLazyRoute("/todos")` silently didn't match.
+- **Pathless layout routes** (declared with `id: "_foo"` instead of `path`) contributed nothing to the URL but their id was prepended to every descendant's route id. The `createLazyRoute(...)` string on each descendant had to include that segment or the chunk wouldn't resolve.
+
+Both failed at runtime with "Failed to fetch dynamically imported module" — not at build time.
+
+Applied to every lazy route under `modules/demo/src/todos/`:
+
+```ts
+// modules/demo/src/todos/createTodosRoutes.tsx (pre-migration)
+const todosLayoutRoute = createRoute({
+    getParentRoute: () => todosRoute,
+    id: "_todosLayout",
+    component: TodosLayout
+});
+```
+
+```ts
+// modules/demo/src/todos/TodoEdit.lazy.tsx (pre-migration)
+// URL is /todos/:todoId/edit. Route id is /todos/_todosLayout/$todoId/edit.
+export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
+    component: TodoEdit
+});
+```
+
+The URL and the id diverged. Refactoring the layout id or removing the pathless wrapper meant updating every descendant's lazy id by hand or navigation broke. The id-prepending rule is **still** in effect with file-based routing (see "Pathless layout ids propagate to descendants" in the current Limitations), but the generator handles the id construction, so the refactor-follow-through pain is gone.
+
+### Loader data types didn't reach lazy routes
+
+`useLoaderData()` in a `*.lazy.tsx` file returned `unknown`. The route's loader return type didn't propagate from the registered `routeTree` through to lazy consumers. Same root cause as [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) above (the type registry was designed around file-based codegen), surfaced on the data side instead of the link side: trees assembled via `addChildren` aren't fully visible to the lookups TSR performs for `useLoaderData`. Tracked in [TanStack/router discussions#1732](https://github.com/TanStack/router/discussions/1732).
+
+Alternatives that didn't fix it:
+
+- `getRouteApi(id).useLoaderData()` — same registry gap, same `unknown`.
+- `RouteById<RegisteredRouter["routeTree"], id>["types"]["loaderData"]` — reaches into internal types not covered by semver, and still resolves through the same broken registry.
+- Casting consumers to a raw Prisma model type (`as TodoModel`) — couples every consumer to the schema, so any `select`/`include` narrowing silently becomes a lie.
+
+The workaround in use was a per-route type alias derived from the server function, exported from the critical file:
+
+```tsx
+// modules/demo/src/todos/TodosList.tsx (critical, pre-migration)
+export const getTodos = createServerFn({ method: "GET" }).handler(() => {
+    return prisma.todo.findMany({ orderBy: { createdAt: "asc" } });
+});
+
+export type TodosLoaderData = Awaited<ReturnType<typeof getTodos>>;
+```
+
+```tsx
+// modules/demo/src/todos/TodosList.lazy.tsx (lazy, pre-migration)
+import type { TodosLoaderData } from "./TodosList.tsx";
+
+const todos = routeApi.useLoaderData() as TodosLoaderData;
+```
+
+Every new route with a loader carried its own `<Name>LoaderData` export. With file-based routing, the generated registry types `useLoaderData({ from: "..." })` directly from the route's loader return type, so the casts and the exported aliases are gone.
+
+### Production build failed: manifest plugin required a generated route tree
+
+`pnpm build-web` failed in the SSR phase with:
+
+```
+[plugin tanstack-start:start-manifest-plugin]
+TypeError: Cannot convert undefined or null to object
+    at Object.entries (<anonymous>)
+    at buildRouteManifestRoutes (.../start-manifest-plugin/manifestBuilder.js:171)
+```
+
+The plugin does `Object.entries(options.routeTreeRoutes)`. With `enableRouteGeneration: false`, no `routeTree.gen.ts` was produced, `routeTreeRoutes` was `undefined`, and the plugin crashed. Client bundle completed; only the SSR environment blew up. Same `vite build` ran locally, via `netlify deploy --build`, and in Netlify CD — so `pnpm build-web`, `pnpm deploy-web`, and Git-based deploys all failed at the same point. Upstream: [TanStack/router#5808](https://github.com/TanStack/router/issues/5808), closed as not planned. This was ultimately the blocker that forced the move to virtual file routes; no POC workaround existed.

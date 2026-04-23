@@ -1,5 +1,4 @@
 import { createLazyRoute, createLink, useLoaderData, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { useForm } from "@tanstack/react-form";
 import { Heading } from "@/components/ui/heading.tsx";
 import { TextField } from "@/components/ui/text-field.tsx";
@@ -7,7 +6,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/field.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
-import type { TodoByIdLoaderData } from "./TodoDetail.tsx";
+import { updateTodo } from "../Todos.server.ts";
 
 export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
     component: TodoEdit
@@ -15,23 +14,8 @@ export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
 
 const Link = createLink(IntentLink);
 
-const updateTodo = createServerFn({ method: "POST" })
-    .inputValidator((d: { id: string; title: string; description: string | null; completed: boolean }) => d)
-    .handler(async ({ data }) => {
-        const { prisma } = await import("../db/client.ts");
-
-        await prisma.todo.update({
-            where: { id: data.id },
-            data: {
-                title: data.title,
-                description: data.description,
-                completed: data.completed
-            }
-        });
-    });
-
 export function TodoEdit() {
-    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" }) as TodoByIdLoaderData;
+    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" });
     const router = useRouter();
 
     const form = useForm({

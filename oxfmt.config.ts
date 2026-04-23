@@ -1,7 +1,7 @@
 import { defineConfig } from "oxfmt";
 
 export default defineConfig({
-    ignorePatterns: [".agents/skills", ".claude/skills", "skills-lock.json"],
+    ignorePatterns: [".agents/skills", ".claude/skills", "skills-lock.json", "apps/web/src/routeTree.gen.ts"],
     printWidth: 150,
     tabWidth: 4,
     singleQuote: false,

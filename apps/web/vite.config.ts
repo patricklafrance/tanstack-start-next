@@ -3,6 +3,15 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import netlify from "@netlify/vite-plugin-tanstack-start";
+import { rootRoute, index, physical } from "@tanstack/virtual-file-routes";
+
+// Virtual route config mounts module route directories into the app's route tree. Paths in physical()
+// are resolved relative to `routesDirectory` (apps/web/src/routes/) per @tanstack/virtual-file-routes.
+const virtualRouteConfig = rootRoute("__root.tsx", [
+    index("index.tsx"),
+    physical("/counter", "../../../../modules/demo/src/counter/routes"),
+    physical("/todos", "../../../../modules/demo/src/todos/routes")
+]);
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, "../..", "");
@@ -36,7 +45,7 @@ export default defineConfig(({ mode }) => {
             tailwindcss(),
             tanstackStart({
                 router: {
-                    enableRouteGeneration: false
+                    virtualRouteConfig
                 }
             }),
             // React's plugin must come after start's vite plugin.
