@@ -56,18 +56,18 @@ Modules do not configure Tailwind and do not import CSS — the host app handles
 
 ### Code-based routing
 
-TanStack Start's file-based route generator scans a single directory (`apps/web/src/routes/`) and does not cross workspace boundaries. A module defined under `modules/<name>/` cannot contribute file-based routes; there is no configuration that lifts this. The repo works around it by disabling `enableRouteGeneration` and assembling the entire route tree in code — every feature (app-local or module) exposes a `create<Feature>Routes(parentRoute)` factory that `apps/web/src/router.tsx` composes:
+TanStack Start's default file-based route generator scans a single directory (`apps/web/src/routes/`) and does not cross workspace boundaries on its own. A module defined under `modules/<name>/` cannot contribute file-based routes through the default generator. The sanctioned escape hatch is [virtual file routes](https://tanstack.com/router/latest/docs/framework/react/routing/virtual-file-routes) — `virtualRouteConfig` in `tsr.config.json` with the `physical()` helper can mount route directories from anywhere, including sibling workspaces. That path was not taken here (it carries its own rough edges under pnpm — see [TanStack/router#4984](https://github.com/TanStack/router/issues/4984)); instead the repo disables `enableRouteGeneration` and assembles the entire route tree in code. Every feature (app-local or module) exposes a `create<Feature>Routes(parentRoute)` factory that `apps/web/src/router.tsx` composes:
 
 ```ts
 // apps/web/src/router.tsx
 rootRoute.addChildren([createHomeRoute(rootRoute), ...createDemoRoutes(rootRoute)]);
 ```
 
-This is not a style choice — it's the only arrangement that lets a module own its routes. Every item below is a downstream consequence.
+Given that choice, every item below is a downstream consequence.
 
 #### File-based + code-based cannot be mixed safely
 
-Ruling out "just use file-based for the app and code-based for modules": [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) confirms the type registry doesn't pick up the code-based half when both are in play. `<Link to="...">` autocomplete and typed `useParams` silently drop module routes from the union. No warning, no type error — it compiles. Fully code-based or fully file-based; no mixing.
+Ruling out "just use file-based for the app and code-based for modules": [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) reports that the type registry (generated from the file tree) doesn't pick up code-based routes added via `addChildren`. `<Link to="...">` autocomplete and typed `useParams` silently drop those routes from the union. No warning, no type error — it compiles. The issue was closed by the reporter without a fix PR; the architecture (generated `routeTree.gen.ts` from files only) inherently excludes `addChildren` routes, and virtual routes are the sanctioned way to bring them into the registry. Fully code-based or fully file-based (incl. virtual); no ad-hoc mixing.
 
 #### Every route is manual
 
@@ -79,7 +79,7 @@ File-based routing splits by default. Code-based doesn't. Every split is explici
 
 #### TS compiler slows as the route tree grows
 
-Code-based routing relies on inference through `getParentRoute()` chains. File-based codegen short-circuits that work. Typecheck time scales with tree depth in a way file-based setups don't feel.
+Code-based routing relies on inference through `getParentRoute()` chains — confirmed by the maintainers as existing primarily for TypeScript typing inference ([discussion #585](https://github.com/TanStack/router/discussions/585)). File-based codegen short-circuits that work by emitting a concrete `routeTree.gen.ts`. TanStack Router has documented TS-perf gotchas on the consumer side (e.g. [#1091](https://github.com/TanStack/router/issues/1091)), and directionally, deeper `getParentRoute` chains mean more inference per file; we haven't benchmarked it here.
 
 #### Route id quirks that must be tracked manually
 
