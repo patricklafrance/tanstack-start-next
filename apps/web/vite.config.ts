@@ -13,12 +13,9 @@ export default defineConfig(() => ({
         tsconfigPaths: true
     },
     optimizeDeps: {
-        // Pre-bundle every react-aria-components subpath used by intent-ui so Vite doesn't lazily re-optimize one
-        // (and bump its ?v= hash) the first time a route imports it. Without this, the first navigation to a route
-        // that pulls a not-yet-seen subpath races: Vite re-optimizes the subpath, bumps its hash, but the already-served
-        // intent-ui wrapper (e.g. button.tsx) still references the previous hash → 504 Outdated Optimize Dep → the
-        // dynamic chunk fails to evaluate → "Failed to fetch dynamically imported module".
+        // View https://github.com/vitejs/vite/issues/22303.
         include: [
+            "react-aria-components/Breadcrumbs",
             "react-aria-components/Button",
             "react-aria-components/FieldError",
             "react-aria-components/Group",

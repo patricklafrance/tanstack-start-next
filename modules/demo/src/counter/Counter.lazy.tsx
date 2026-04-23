@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button.tsx";
 
 export const Route = createLazyRoute("/counter")({
-    component: CounterRoute
+    component: Counter
 });
 
 const filePath = "count.txt";
@@ -16,7 +16,7 @@ const updateCount = createServerFn({ method: "POST" })
         await fs.promises.writeFile(filePath, `${count + data}`);
     });
 
-function CounterRoute() {
+export function Counter() {
     const router = useRouter();
     const count = Route.useLoaderData();
 

@@ -80,9 +80,11 @@ Modules do not configure Tailwind and do not import CSS — the host app handles
 
 - The `netlify()` Vite plugin is gated to `command === "build"` in `apps/web/vite.config.ts`. In dev, the plugin reads the linked Netlify site config and joins its `base = apps/web` against the local cwd, producing a non-existent `apps/web/apps/web` and aborting startup. The plugin is only needed for production deployment, so skipping it in dev is harmless and unblocks `pnpm dev-web`.
 
-## Issues encoutered
+## Issues encountered
 
 ### shadcn
+
+Multiple issues with the CLI:
 
 - https://github.com/shadcn-ui/ui/issues/10461
 - https://github.com/shadcn-ui/ui/issues/10462
@@ -100,6 +102,21 @@ The error is: Apr 21, 10:51:25 PM: c3d83970 ERROR  Invoke Error     {"errorType"
 
 Bottom line... to deploy with the Netlify CLI, it would requires to somehow pre-build the server functions with something like tsdown or set `ssr.noExternal: true` in vite config, which have it's own downsides as well. But when using Netlify continuous deployments, it works.
 
+### Tanstack Router
+
+- Pathless layout route ids silently become part of every descendant's route id. A child's `createLazyRoute(...)` must include the pathless segment — e.g. `createLazyRoute("/todos/_todosLayout/$todoId")`, not `createLazyRoute("/todos/$todoId")`. Mismatched ids fail at runtime with "Failed to fetch dynamically imported module". The URL path is unchanged; only the route id shifts.
+
 ### Vite
 
--
+- 504 Outdated Optimize Dep on lazy-route navigation: https://github.com/vitejs/vite/issues/22303
+
+### Storybook
+
+Issues with `storybook-addon-tanstack-start`:
+
+- https://github.com/jonmumm/storybook-addon-tanstack-start/issues/7 — addon excludes `@tanstack/react-router` from `optimizeDeps`, which cascades into `use-sync-external-store/shim/with-selector` being served as raw CJS and failing the browser's named-import parse under pnpm.
+- https://github.com/jonmumm/storybook-addon-tanstack-start/issues/8 — the root barrel transitively imports `plugin.mjs`, whose top-level `fileURLToPath(import.meta.url)` runs in the browser and throws. Workaround: import `tanstackRouterParameters` from `storybook-addon-tanstack-router` directly.
+
+`storybook-addon-tanstack-start` doesn't support stubbing any server function:
+
+- `createServerFn` stubs throw unconditionally and there is no documented per-story override. Stories can render with mocked loader data, but click/interaction flows that invoke server functions are a dead end without refactoring the component to expose a mockable boundary.

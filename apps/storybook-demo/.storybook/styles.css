@@ -1,1 +1,4 @@
 @import "@packages/intent-ui/globals.css";
+
+/* Match the web app — cover every modules/<name>/src tree so module-level Tailwind classes render. */
+@source "../../../modules/*/src/**/*.{ts,tsx}";

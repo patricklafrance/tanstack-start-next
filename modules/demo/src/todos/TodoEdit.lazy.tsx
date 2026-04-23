@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/field.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
 
-export const Route = createLazyRoute("/todos/$todoId/edit")({
+// The `_todosLayout` segment is the id of the pathless layout route wrapping this child (see
+// createTodosRoutes.tsx). Pathless ids become part of every descendant's route id even though they
+// contribute nothing to the URL, so `createLazyRoute` must include it to match the real route id.
+export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
     component: TodoEdit
 });
 
