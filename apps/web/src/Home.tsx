@@ -1,7 +1,8 @@
 import { createRoute, type AnyRoute } from "@tanstack/react-router";
+import { Text } from "@/components/ui/text.tsx";
 
 function Home() {
-    return <p> You are on the home page!</p>;
+    return <Text>You are on the home page!</Text>;
 }
 
 export function createHomeRoute(parentRoute: AnyRoute) {

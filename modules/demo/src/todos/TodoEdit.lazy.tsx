@@ -1,8 +1,16 @@
-import { createLazyRoute, Link, useRouter } from "@tanstack/react-router";
+import { createLazyRoute, createLink, useRouter } from "@tanstack/react-router";
+import { Heading } from "@/components/ui/heading.tsx";
+import { TextField } from "@/components/ui/text-field.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/field.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Link as IntentLink } from "@/components/ui/link.tsx";
 
 export const Route = createLazyRoute("/todos/$todoId/edit")({
     component: TodoEdit
 });
+
+const Link = createLink(IntentLink);
 
 export function TodoEdit() {
     const { todoId } = Route.useParams();
@@ -10,24 +18,22 @@ export function TodoEdit() {
 
     return (
         <div>
-            <h1 className="mb-4 text-2xl font-bold">Edit todo #{todoId}</h1>
+            <Heading className="mb-4">Edit todo #{todoId}</Heading>
             <form
-                className="max-w-md space-y-3"
+                className="max-w-md space-y-6"
                 onSubmit={e => {
                     e.preventDefault();
 
                     router.navigate({ to: "/todos/$todoId", params: { todoId } });
                 }}
             >
-                <label className="block">
-                    <span className="mb-1 block">Title</span>
-                    <input type="text" defaultValue={`Todo ${todoId}`} className="w-full rounded border px-2 py-1" />
-                </label>
+                <TextField name="title" defaultValue={`Todo ${todoId}`}>
+                    <Label>Title</Label>
+                    <Input />
+                </TextField>
                 <div className="flex gap-3">
-                    <button type="submit" className="rounded border px-3 py-1">
-                        Save
-                    </button>
-                    <Link to="/todos/$todoId" params={{ todoId }} className="underline">
+                    <Button type="submit">Save</Button>
+                    <Link to="/todos/$todoId" params={{ todoId }}>
                         Cancel
                     </Link>
                 </div>

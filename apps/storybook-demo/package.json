@@ -1,0 +1,37 @@
+{
+    "name": "@apps/storybook-demo",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "storybook dev -p 6006",
+        "build-storybook": "storybook build",
+        "serve-storybook": "http-server storybook-static -p 8080 -P http://localhost:8080? -c-1",
+        "typecheck": "tsgo"
+    },
+    "dependencies": {
+        "@packages/intent-ui": "workspace:*",
+        "react": "19.2.5",
+        "react-aria-components": "1.17.0",
+        "react-dom": "19.2.5",
+        "tailwind-merge": "3.5.0",
+        "tailwind-variants": "3.2.2",
+        "tailwindcss": "4.2.4",
+        "tailwindcss-react-aria-components": "2.1.0",
+        "tw-animate-css": "1.4.0"
+    },
+    "devDependencies": {
+        "@packages/ts-configs": "workspace:*",
+        "@storybook/react-vite": "10.3.5",
+        "@tailwindcss/vite": "4.2.4",
+        "@types/node": "25.6.0",
+        "@types/react": "19.2.14",
+        "@types/react-dom": "19.2.3",
+        "@typescript/native-preview": "7.0.0-dev.20260421.2",
+        "@vitejs/plugin-react": "6.0.1",
+        "http-server": "14.1.1",
+        "storybook": "10.3.5",
+        "typescript": "^6.0.3",
+        "vite": "8.0.9"
+    }
+}

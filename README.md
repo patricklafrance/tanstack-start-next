@@ -99,3 +99,7 @@ The error is: Apr 21, 10:51:25 PM: c3d83970 ERROR  Invoke Error     {"errorType"
 ```
 
 Bottom line... to deploy with the Netlify CLI, it would requires to somehow pre-build the server functions with something like tsdown or set `ssr.noExternal: true` in vite config, which have it's own downsides as well. But when using Netlify continuous deployments, it works.
+
+### Vite
+
+-

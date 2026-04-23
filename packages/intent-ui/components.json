@@ -11,10 +11,10 @@
     },
     "iconLibrary": "lucide",
     "aliases": {
-        "components": "@packages/intent-ui/components",
-        "hooks": "@packages/intent-ui/hooks",
-        "lib": "@packages/intent-ui/lib",
-        "utils": "@packages/intent-ui/lib/primitive",
-        "ui": "@packages/intent-ui/components"
+        "components": "@/components",
+        "hooks": "@/hooks",
+        "lib": "@/lib",
+        "utils": "@/lib/utils",
+        "ui": "@/components/ui"
     }
 }

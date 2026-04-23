@@ -10,7 +10,6 @@
 // the lazy chunk in just to resolve the loader.
 
 import * as fs from "node:fs";
-import { createRoute, type AnyRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
 const filePath = "count.txt";
@@ -19,16 +18,8 @@ async function readCount() {
     return parseInt(await fs.promises.readFile(filePath, "utf-8").catch(() => "0"));
 }
 
-const getCount = createServerFn({
+export const getCount = createServerFn({
     method: "GET"
 }).handler(() => {
     return readCount();
 });
-
-export function createCounterRoute(parentRoute: AnyRoute) {
-    return createRoute({
-        getParentRoute: () => parentRoute,
-        path: "/counter",
-        loader: async () => await getCount()
-    }).lazy(() => import("./Counter.lazy.tsx").then(d => d.Route));
-}

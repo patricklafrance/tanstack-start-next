@@ -1,0 +1,11 @@
+{
+    "extends": "@packages/ts-configs/shared.json",
+    "compilerOptions": {
+        "incremental": true,
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+        "paths": {
+            "@/*": ["../../packages/intent-ui/src/*"]
+        }
+    },
+    "exclude": ["dist", "node_modules"]
+}

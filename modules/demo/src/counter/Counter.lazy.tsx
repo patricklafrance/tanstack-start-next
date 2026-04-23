@@ -3,6 +3,10 @@ import { createLazyRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button.tsx";
 
+export const Route = createLazyRoute("/counter")({
+    component: CounterRoute
+});
+
 const filePath = "count.txt";
 
 const updateCount = createServerFn({ method: "POST" })
@@ -11,10 +15,6 @@ const updateCount = createServerFn({ method: "POST" })
         const count = parseInt(await fs.promises.readFile(filePath, "utf-8").catch(() => "0"));
         await fs.promises.writeFile(filePath, `${count + data}`);
     });
-
-export const Route = createLazyRoute("/counter")({
-    component: CounterRoute
-});
 
 function CounterRoute() {
     const router = useRouter();
