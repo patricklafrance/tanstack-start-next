@@ -1,11 +1,7 @@
-import { createLazyRoute, createLink, useLoaderData } from "@tanstack/react-router";
+import { createLink, useLoaderData } from "@tanstack/react-router";
 import { Heading } from "@/components/ui/heading.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
-import type { getTodos } from "../Todos.server.ts";
-
-export const Route = createLazyRoute("/todos/_todosLayout/")({
-    component: TodosList
-});
+import type { getTodos } from "./Todos.server.ts";
 
 const Link = createLink(IntentLink);
 

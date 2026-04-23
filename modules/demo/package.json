@@ -35,6 +35,7 @@
         "@tanstack/react-form": "^1.29.1",
         "@tanstack/react-router": "^1.168.23",
         "@tanstack/react-start": "^1.167.42",
+        "@tanstack/virtual-file-routes": "^1.161.7",
         "react": "^19.2.5",
         "react-aria-components": "^1.17.0",
         "react-dom": "^19.2.5",

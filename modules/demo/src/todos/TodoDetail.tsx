@@ -1,16 +1,12 @@
-import { createLazyRoute, createLink, useLoaderData } from "@tanstack/react-router";
+import { createLink, useLoaderData } from "@tanstack/react-router";
 import { Heading } from "@/components/ui/heading.tsx";
 import { Text } from "@/components/ui/text.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
 
-export const Route = createLazyRoute("/todos/_todosLayout/$todoId/")({
-    component: TodoDetail
-});
-
 const Link = createLink(IntentLink);
 
 export function TodoDetail() {
-    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" });
+    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId/" });
 
     return (
         <div>

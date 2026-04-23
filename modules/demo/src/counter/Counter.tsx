@@ -1,14 +1,10 @@
-import { createLazyRoute, useRouter } from "@tanstack/react-router";
+import { useLoaderData, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button.tsx";
-import { updateCount } from "../Counter.server.ts";
-
-export const Route = createLazyRoute("/counter/")({
-    component: Counter
-});
+import { updateCount } from "./Counter.server.ts";
 
 export function Counter() {
     const router = useRouter();
-    const count = Route.useLoaderData();
+    const count = useLoaderData({ from: "/counter/" });
 
     return (
         <Button

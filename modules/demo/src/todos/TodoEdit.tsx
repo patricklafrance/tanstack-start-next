@@ -1,4 +1,4 @@
-import { createLazyRoute, createLink, useLoaderData, useRouter } from "@tanstack/react-router";
+import { createLink, useLoaderData, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { Heading } from "@/components/ui/heading.tsx";
 import { TextField } from "@/components/ui/text-field.tsx";
@@ -6,16 +6,12 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/field.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
-import { updateTodo } from "../Todos.server.ts";
-
-export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
-    component: TodoEdit
-});
+import { updateTodo } from "./Todos.server.ts";
 
 const Link = createLink(IntentLink);
 
 export function TodoEdit() {
-    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" });
+    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId/edit" });
     const router = useRouter();
 
     const form = useForm({

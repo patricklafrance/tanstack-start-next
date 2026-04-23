@@ -116,6 +116,32 @@ Pathless layout routes (file named `_foo.tsx`) contribute nothing to the URL, bu
 
 The sanctioned path for cross-workspace file-based routing (`virtualRouteConfig` + `physical()`) works, but has open upstream bugs around pnpm-hoisted package alias resolution ([TanStack/router#4984](https://github.com/TanStack/router/issues/4984)). This repo sidesteps that by using filesystem paths (`../../../../modules/...`) in `physical()` rather than workspace package specifiers. If you switch to package specifiers and hit resolution failures, #4984 is the tracking issue.
 
+### Single-file `createFileRoute` + component breaks code splitting when the component is exported
+
+The pattern the TanStack Router docs advertise co-locates the route definition and the component in one file:
+
+```tsx
+// idiomatic docs shape
+export const Route = createFileRoute(...)({ component: TodoDetail });
+function TodoDetail() { ... } // local, NOT exported
+```
+
+The code splitter refuses to split `component:` when the referenced identifier is exported from the same file. Relevant check in `@tanstack/router-plugin/.../code-splitter/compilers.js`:
+
+```js
+if (t.isIdentifier(value)) {
+    const isExported = hasExport(ast, value);
+    shouldSplit = !isExported;
+}
+```
+
+Storybook stories in this repo import components by name (`import { TodoDetail } from "./TodoDetail"`), so the component has to be exported. That forces a two-file shape per route:
+
+- `modules/demo/src/todos/TodoDetail.tsx` — component, named export (Storybook imports from here)
+- `modules/demo/src/todos/routes/todoDetailRoute.tsx` — `createFileRoute(...)({ component: TodoDetail })`, nothing else exported
+
+Measured impact of attempting the single-file merge: client collapsed into one 475 kB `index.js`. The two-file shape yields a 258 kB critical path plus per-route lazy chunks (`todoEditRoute-*.js` at 52 kB, etc.). Not tracked as an upstream bug — intentional splitter behavior — but worth documenting because it quietly contradicts the docs whenever a component also needs a named export for tests or stories.
+
 ## Issues encountered
 
 ### shadcn
