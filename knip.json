@@ -2,6 +2,22 @@
     "workspaces": {
         ".": {
             "entry": ["types/**/*.d.ts"]
+        },
+        "apps/web": {
+            "entry": ["src/router.tsx"],
+            "ignoreDependencies": ["@heroicons/react"]
+        },
+        "apps/storybook": {
+            "ignoreDependencies": ["@heroicons/react", "storybook-addon-tanstack-router", "use-sync-external-store"]
+        },
+        "apps/storybook-demo": {
+            "ignoreDependencies": ["@heroicons/react", "storybook-addon-tanstack-router", "use-sync-external-store"]
+        },
+        "apps/storybook-intent-ui": {
+            "ignoreDependencies": ["@heroicons/react"]
+        },
+        "modules/demo": {
+            "ignoreDependencies": ["@packages/intent-ui", "@neondatabase/serverless", "@prisma/client", "ws"]
         }
     }
 }

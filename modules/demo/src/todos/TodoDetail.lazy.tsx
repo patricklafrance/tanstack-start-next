@@ -1,12 +1,9 @@
-import { createLazyRoute, createLink } from "@tanstack/react-router";
+import { createLazyRoute, createLink, useLoaderData } from "@tanstack/react-router";
 import { Heading } from "@/components/ui/heading.tsx";
 import { Text } from "@/components/ui/text.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
+import type { TodoByIdLoaderData } from "./TodoDetail.tsx";
 
-// The `_todosLayout` segment is the id of the pathless layout route wrapping this child (see
-// createTodosRoutes.tsx). Pathless ids become part of every descendant's route id even though they
-// contribute nothing to the URL, so `createLazyRoute` must include it to match the real route id.
-// Trailing slash: this is the index route under `$todoId`, which gives it an id ending in `/`.
 export const Route = createLazyRoute("/todos/_todosLayout/$todoId/")({
     component: TodoDetail
 });
@@ -14,15 +11,16 @@ export const Route = createLazyRoute("/todos/_todosLayout/$todoId/")({
 const Link = createLink(IntentLink);
 
 export function TodoDetail() {
-    const { todoId } = Route.useParams();
+    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" }) as TodoByIdLoaderData;
 
     return (
         <div>
-            <Heading className="mb-4">Todo #{todoId}</Heading>
-            <Text className="mb-4">Details for todo {todoId} go here.</Text>
+            <Heading className="mb-4">{todo.title}</Heading>
+            {todo.description && <Text className="mb-2">{todo.description}</Text>}
+            <Text className="mb-4">Status: {todo.completed ? "Done" : "Not done"}</Text>
             <div className="flex gap-3">
                 <Link to="/todos">← Back to list</Link>
-                <Link to="/todos/$todoId/edit" params={{ todoId }}>
+                <Link to="/todos/$todoId/edit" params={{ todoId: todo.id }}>
                     Edit
                 </Link>
             </div>

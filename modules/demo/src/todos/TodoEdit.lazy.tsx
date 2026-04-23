@@ -1,42 +1,88 @@
-import { createLazyRoute, createLink, useRouter } from "@tanstack/react-router";
+import { createLazyRoute, createLink, useLoaderData, useRouter } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { useForm } from "@tanstack/react-form";
 import { Heading } from "@/components/ui/heading.tsx";
 import { TextField } from "@/components/ui/text-field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/field.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
+import type { TodoByIdLoaderData } from "./TodoDetail.tsx";
 
-// The `_todosLayout` segment is the id of the pathless layout route wrapping this child (see
-// createTodosRoutes.tsx). Pathless ids become part of every descendant's route id even though they
-// contribute nothing to the URL, so `createLazyRoute` must include it to match the real route id.
 export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
     component: TodoEdit
 });
 
 const Link = createLink(IntentLink);
 
+const updateTodo = createServerFn({ method: "POST" })
+    .inputValidator((d: { id: string; title: string; description: string | null; completed: boolean }) => d)
+    .handler(async ({ data }) => {
+        const { prisma } = await import("../db/client.ts");
+
+        await prisma.todo.update({
+            where: { id: data.id },
+            data: {
+                title: data.title,
+                description: data.description,
+                completed: data.completed
+            }
+        });
+    });
+
 export function TodoEdit() {
-    const { todoId } = Route.useParams();
+    const todo = useLoaderData({ from: "/todos/_todosLayout/$todoId" }) as TodoByIdLoaderData;
     const router = useRouter();
+
+    const form = useForm({
+        defaultValues: {
+            title: todo.title,
+            description: todo.description ?? ""
+        },
+        onSubmit: async ({ value }) => {
+            await updateTodo({
+                data: {
+                    id: todo.id,
+                    title: value.title,
+                    description: value.description || null,
+                    completed: todo.completed
+                }
+            });
+
+            await router.invalidate();
+            router.navigate({ to: "/todos/$todoId", params: { todoId: todo.id } });
+        }
+    });
 
     return (
         <div>
-            <Heading className="mb-4">Edit todo #{todoId}</Heading>
+            <Heading className="mb-4">Edit: {todo.title}</Heading>
             <form
                 className="max-w-md space-y-6"
                 onSubmit={e => {
                     e.preventDefault();
-
-                    router.navigate({ to: "/todos/$todoId", params: { todoId } });
+                    form.handleSubmit();
                 }}
             >
-                <TextField name="title" defaultValue={`Todo ${todoId}`}>
-                    <Label>Title</Label>
-                    <Input />
-                </TextField>
+                <form.Field name="title">
+                    {field => (
+                        <TextField name={field.name} value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur}>
+                            <Label>Title</Label>
+                            <Input />
+                        </TextField>
+                    )}
+                </form.Field>
+                <form.Field name="description">
+                    {field => (
+                        <TextField name={field.name} value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur}>
+                            <Label>Description</Label>
+                            <Input />
+                        </TextField>
+                    )}
+                </form.Field>
                 <div className="flex gap-3">
                     <Button type="submit">Save</Button>
-                    <Link to="/todos/$todoId" params={{ todoId }}>
+                    <Link to="/todos/$todoId" params={{ todoId: todo.id }}>
                         Cancel
                     </Link>
                 </div>

@@ -20,7 +20,7 @@ export default defineConfig({
         "eslint/curly": "warn",
         "eslint/eqeqeq": ["warn", "smart"],
         "eslint/no-caller": "warn",
-        "eslint/no-console": "warn",
+        "eslint/no-console": "off",
         "eslint/no-eval": "warn",
         "eslint/no-extend-native": "warn",
         "eslint/no-extra-bind": "warn",

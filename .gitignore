@@ -26,5 +26,8 @@ build-storybook.log
 __unconfig*
 count.txt
 
+# Prisma
+generated
+
 # Claude
 .claude/worktrees

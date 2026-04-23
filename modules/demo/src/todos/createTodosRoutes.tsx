@@ -1,5 +1,7 @@
 import { createRoute, type AnyRoute } from "@tanstack/react-router";
 import { TodosLayout } from "./TodosLayout.tsx";
+import { getTodos } from "./TodosList.tsx";
+import { getTodoById } from "./TodoDetail.tsx";
 
 export function createTodosRoutes(parentRoute: AnyRoute) {
     const todosRoute = createRoute({
@@ -17,7 +19,8 @@ export function createTodosRoutes(parentRoute: AnyRoute) {
 
     const todosIndexRoute = createRoute({
         getParentRoute: () => todosLayoutRoute,
-        path: "/"
+        path: "/",
+        loader: () => getTodos()
     }).lazy(() => import("./TodosList.lazy.tsx").then(d => d.Route));
 
     // No component — TanStack Router defaults to rendering <Outlet />, so this acts as a parent
@@ -25,6 +28,7 @@ export function createTodosRoutes(parentRoute: AnyRoute) {
     const todoDetailRoute = createRoute({
         getParentRoute: () => todosLayoutRoute,
         path: "$todoId",
+        loader: ({ params }) => getTodoById({ data: params.todoId }),
         staticData: { crumb: m => `#${(m.params as { todoId: string }).todoId}` }
     });
 
@@ -39,5 +43,7 @@ export function createTodosRoutes(parentRoute: AnyRoute) {
         staticData: { crumb: "Edit" }
     }).lazy(() => import("./TodoEdit.lazy.tsx").then(d => d.Route));
 
-    return [todosRoute.addChildren([todosLayoutRoute.addChildren([todosIndexRoute, todoDetailRoute.addChildren([todoDetailIndexRoute, todoEditRoute])])])];
+    return [
+        todosRoute.addChildren([todosLayoutRoute.addChildren([todosIndexRoute, todoDetailRoute.addChildren([todoDetailIndexRoute, todoEditRoute])])])
+    ];
 }

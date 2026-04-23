@@ -52,6 +52,39 @@ Modules do not configure Tailwind and do not import CSS — the host app handles
 
 ![](static/netlify-site-config.png)
 
+- Set `DATABASE_URL` and `DATABASE_URL_POOLER` in the site's environment variables (same values as the local `.env.local`).
+
+## Database
+
+The demo module persists todos in a Neon Postgres database via Prisma. Schema, migrations, and seed live in `modules/demo/prisma/`. All `pnpm prisma-*` scripts must be run from `modules/demo/`.
+
+Assumes a single shared Neon database — no per-contributor branching convention yet.
+
+### First-time setup
+
+1. Create a project at [neon.tech](https://neon.tech) and copy the two connection strings (direct + pooled).
+2. Create `.env.local` at the repo root:
+
+    ```
+    DATABASE_URL=<direct connection string>
+    DATABASE_URL_POOLER=<pooled connection string>
+    ```
+
+    Migrations require the direct URL (PgBouncer transaction pooling breaks DDL); runtime uses the pooled URL.
+
+3. From `modules/demo/`: `pnpm prisma-migrate` to apply migrations.
+4. Optional — seed demo data: `pnpm prisma-seed`.
+
+### Schema changes
+
+1. Edit `modules/demo/prisma/schema.prisma`.
+2. From `modules/demo/`: `pnpm prisma-migrate` — creates the migration, applies it, regenerates the client.
+3. Commit the new folder under `modules/demo/prisma/migrations/`.
+
+### Production migrations
+
+Run `pnpm prisma-migrate-deploy` from `modules/demo/` against the production Neon branch. Deliberately manual, not wired into the Netlify build: the build runs in `apps/web` and has no knowledge of `modules/demo`'s Prisma scripts, and auto-applying DDL during a routine site deploy is the wrong default.
+
 ## Limitations
 
 ### Code-based routing
@@ -90,6 +123,33 @@ Two cases where the route id diverges from what a reader would expect, and the l
 
 Both fail at runtime with "Failed to fetch dynamically imported module" — not at build time.
 
+#### Loader data types don't reach lazy routes
+
+`useLoaderData()` in a `*.lazy.tsx` file returns `unknown`. The route's loader return type doesn't propagate from the registered `routeTree` through to lazy consumers. Same root cause as [TanStack/router#2154](https://github.com/TanStack/router/issues/2154) above (the type registry was designed around file-based codegen), surfaced on the data side instead of the link side: trees assembled via `addChildren` aren't fully visible to the lookups TSR performs for `useLoaderData`. Tracked in [TanStack/router discussions#1732](https://github.com/TanStack/router/discussions/1732).
+
+Alternatives that don't fix it:
+
+- `getRouteApi(id).useLoaderData()` — same registry gap, same `unknown`.
+- `RouteById<RegisteredRouter["routeTree"], id>["types"]["loaderData"]` — reaches into internal types not covered by semver, and still resolves through the same broken registry.
+- Casting consumers to a raw Prisma model type (`as TodoModel`) — couples every consumer to the schema, so any `select`/`include` narrowing silently becomes a lie.
+
+See the workaround below.
+
+#### Production build fails: manifest plugin requires a generated route tree
+
+`pnpm build-web` fails in the SSR phase with:
+
+```
+[plugin tanstack-start:start-manifest-plugin]
+TypeError: Cannot convert undefined or null to object
+    at Object.entries (<anonymous>)
+    at buildRouteManifestRoutes (.../start-manifest-plugin/manifestBuilder.js:171)
+```
+
+The plugin does `Object.entries(options.routeTreeRoutes)`. With `enableRouteGeneration: false`, no `routeTree.gen.ts` is produced, `routeTreeRoutes` is `undefined`, and the plugin crashes. Client bundle completes; only the SSR environment blows up. Same `vite build` runs locally, via `netlify deploy --build`, and in Netlify CD — so `pnpm build-web`, `pnpm deploy-web`, and Git-based deploys all fail at the same point. Upstream: [TanStack/router#5808](https://github.com/TanStack/router/issues/5808), closed as not planned.
+
+No workaround for a POC. Shipping requires switching to file-based routing (gives up cross-workspace routes) or virtual file routes (the sanctioned alternative, mentioned above). Until one of those, builds don't produce artifacts.
+
 ## Issues encountered
 
 ### shadcn
@@ -110,7 +170,9 @@ Netlify function error:
 The error is: Apr 21, 10:51:25 PM: c3d83970 ERROR  Invoke Error     {"errorType":"Error","errorMessage":"Cannot find package '@tanstack/react-router' imported from                         /var/task/apps/web/.netlify/v1/functions/server.mjs","code":"ERR_MODULE_NOT_FOUND","stack":["Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@tanstack/react-router' imported from       /var/task/apps/web/.netlify/v1/functions/server.mjs","    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)","    at packageResolve                             (node:internal/modules/esm/resolve:774:81)","    at moduleResolve (node:internal/modules/esm/resolve:861:18)","    at moduleResolveWithNodePath                                             (node:internal/modules/esm/resolve:991:14)","    at defaultResolve (node:internal/modules/esm/resolve:1034:79)","    at #cachedDefaultResolve                                               (node:internal/modules/esm/loader:731:20)","    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)","    at ModuleLoader.getModuleJobForImport                               (node:internal/modules/esm/loader:310:38)","    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)"]}
 ```
 
-Bottom line... to deploy with the Netlify CLI, it would requires to somehow pre-build the server functions with something like tsdown or set `ssr.noExternal: true` in vite config, which have it's own downsides as well. But when using Netlify continuous deployments, it works.
+Bottom line... to deploy with the Netlify CLI, it would requires to somehow pre-build the server functions with something like tsdown or set `ssr.noExternal: true` in vite config, which have it's own downsides as well. Git-based CD has the same issue — it runs the same `vite build` command.
+
+Note: this `ERR_MODULE_NOT_FOUND` is a **runtime** failure, downstream of a successful build producing a `server.mjs`. Currently the build itself fails earlier (see the manifest-plugin limitation under Code-based routing), so this runtime error isn't reached today.
 
 ### Tanstack Router
 
@@ -226,6 +288,28 @@ export const Route = createLazyRoute("/todos/_todosLayout/$todoId/edit")({
 
 The URL and the id diverge. If someone refactors the layout id or removes the pathless wrapper, every descendant's lazy id must be updated by hand or navigation breaks with "Failed to fetch dynamically imported module".
 
+### Loader data types via a per-route type alias
+
+`useLoaderData()` in a lazy route returns `unknown` in this repo (see the Limitations entry). Since the registry-based fixes don't help and casting to a Prisma type couples consumers to the schema rather than the query, we derive the type from the server function itself and export it from the critical file:
+
+```tsx
+// modules/demo/src/todos/TodosList.tsx (critical)
+export const getTodos = createServerFn({ method: "GET" }).handler(() => {
+    return prisma.todo.findMany({ orderBy: { createdAt: "asc" } });
+});
+
+export type TodosLoaderData = Awaited<ReturnType<typeof getTodos>>;
+```
+
+```tsx
+// modules/demo/src/todos/TodosList.lazy.tsx (lazy)
+import type { TodosLoaderData } from "./TodosList.tsx";
+
+const todos = routeApi.useLoaderData() as TodosLoaderData;
+```
+
+Narrowing the query (adding `select`, `include`) narrows `TodosLoaderData` automatically, so every consumer's cast stays honest without manual edits. Every new route with a loader carries its own `<Name>LoaderData` export. When TSR's registry learns to resolve loader types through `addChildren`-built trees, the cast goes away everywhere.
+
 ### Vite 504 Outdated Optimize Dep (vitejs/vite#22303)
 
 Lazy-route navigations discover new `react-aria-components/*` subpaths, Vite's optimizer re-bundles mid-session, and in-flight module requests 504. Counter: enumerate every subpath used anywhere in the app up-front so the optimizer sees the full set at boot:
@@ -243,12 +327,25 @@ optimizeDeps: {
         "react-aria-components/Link",
         "react-aria-components/Text",
         "react-aria-components/TextField",
-        "react-aria-components/composeRenderProps"
+        "react-aria-components/composeRenderProps",
+        "@heroicons/react/24/solid"
     ];
 }
 ```
 
-Every new react-aria-components subpath added anywhere in the app must also be added here, or a lazy navigation deep in the tree will surface a 504 long after the PR merges.
+Same failure mode applies to `@heroicons/react` subpaths (`/24/solid`, `/24/outline`, `/20/solid`) — each one first reached via a lazy navigation triggers the same 504. Every new react-aria-components or heroicons subpath added anywhere in the app must also be added to `include`, or a lazy navigation deep in the tree will surface a 504 long after the PR merges.
+
+Under pnpm's isolated layout there's a second trap: `optimizeDeps.include` silently no-ops for specifiers that can't be resolved from the app's root. `@heroicons/react` is a dep of `@packages/intent-ui`, not `apps/web`, so no symlink exists at `apps/web/node_modules/@heroicons/` and the pre-bundle scan drops the entry without warning. Lazy navigation through a component that renders breadcrumbs then _discovers_ it for the first time, triggers re-optimization, invalidates the browser's in-flight `?v=` hashes, and surfaces the 504. Counter: declare the transitive design-system dep as a direct dep of `apps/web` so pnpm materializes the link:
+
+```jsonc
+// apps/web/package.json
+"dependencies": {
+    "@heroicons/react": "2.2.0",
+    ...
+}
+```
+
+Same rule as the `use-sync-external-store` workaround below — anything listed in `optimizeDeps.include` must also be reachable from the workspace doing the optimizing. Both pieces are needed: the `include` entry tells the optimizer to pre-bundle the subpath, and the direct dep tells pnpm to make it resolvable.
 
 ### Storybook addon pre-bundles break in pnpm (jonmumm/storybook-addon-tanstack-start#7)
 

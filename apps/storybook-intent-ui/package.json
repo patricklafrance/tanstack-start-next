@@ -10,6 +10,7 @@
         "typecheck": "tsgo"
     },
     "dependencies": {
+        "@heroicons/react": "2.2.0",
         "@packages/intent-ui": "workspace:*",
         "react": "19.2.5",
         "react-aria-components": "1.17.0",
@@ -31,7 +32,7 @@
         "@vitejs/plugin-react": "6.0.1",
         "http-server": "14.1.1",
         "storybook": "10.3.5",
-        "typescript": "^6.0.3",
+        "typescript": "6.0.3",
         "vite": "8.0.9"
     }
 }

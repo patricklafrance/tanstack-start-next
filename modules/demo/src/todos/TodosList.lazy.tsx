@@ -1,10 +1,8 @@
 import { createLazyRoute, createLink } from "@tanstack/react-router";
 import { Heading } from "@/components/ui/heading.tsx";
 import { Link as IntentLink } from "@/components/ui/link.tsx";
+import type { TodosLoaderData } from "./TodosList.tsx";
 
-// The `_todosLayout` segment is the id of the pathless layout route wrapping this child (see
-// createTodosRoutes.tsx). Pathless ids become part of every descendant's route id even though they
-// contribute nothing to the URL, so `createLazyRoute` must include it to match the real route id.
 export const Route = createLazyRoute("/todos/_todosLayout/")({
     component: TodosList
 });
@@ -12,10 +10,7 @@ export const Route = createLazyRoute("/todos/_todosLayout/")({
 const Link = createLink(IntentLink);
 
 export function TodosList() {
-    const todos = [
-        { id: "1", title: "Buy milk" },
-        { id: "2", title: "Walk the dog" }
-    ];
+    const todos = Route.useLoaderData() as TodosLoaderData;
 
     return (
         <div>

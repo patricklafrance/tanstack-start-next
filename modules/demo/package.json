@@ -9,10 +9,18 @@
         ".": "./src/createDemoRoutes.tsx"
     },
     "scripts": {
+        "postinstall": "prisma generate",
+        "prisma-migrate": "dotenv -e ../../.env.local -- prisma migrate dev",
+        "prisma-migrate-deploy": "dotenv -e ../../.env.local -- prisma migrate deploy",
+        "prisma-seed": "dotenv -e ../../.env.local -- prisma db seed",
         "typecheck": "tsgo"
     },
     "dependencies": {
-        "@packages/intent-ui": "workspace:*"
+        "@neondatabase/serverless": "^1.1.0",
+        "@packages/intent-ui": "workspace:*",
+        "@prisma/adapter-neon": "^7.8.0",
+        "@prisma/client": "^7.8.0",
+        "ws": "^8.20.0"
     },
     "devDependencies": {
         "@packages/ts-configs": "workspace:*",
@@ -21,11 +29,13 @@
         "@types/react": "19.2.14",
         "@types/react-dom": "19.2.3",
         "@typescript/native-preview": "7.0.0-dev.20260421.2",
+        "dotenv-cli": "11.0.0",
+        "prisma": "7.8.0",
         "storybook-addon-tanstack-router": "0.1.0",
-        "storybook-addon-tanstack-start": "0.2.1",
         "typescript": "6.0.3"
     },
     "peerDependencies": {
+        "@tanstack/react-form": "^1.29.1",
         "@tanstack/react-router": "^1.168.23",
         "@tanstack/react-start": "^1.167.42",
         "react": "^19.2.5",
